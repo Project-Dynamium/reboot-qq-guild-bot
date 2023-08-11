@@ -1,0 +1,10 @@
+appid: '111111111'
+token: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+restart_time: 5
+task_timeout: 25
+retry_count: 3
+enabled_guild_id: 
+  - '1111111111111111111'
+database:
+  url: mongodb://abcde:fghd@exmaple.com:20000/
+  dbname: dynamite
