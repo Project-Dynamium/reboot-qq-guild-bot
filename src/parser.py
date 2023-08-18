@@ -25,7 +25,9 @@ async def messageReply(content: str, api: BotAPI, message: Msg, recall_time: int
     if recall_time == -1 or isinstance(message, DirectMessage):
         return
     await asyncio.sleep(recall_time)
+    # Recall reply message
     # await api.recall_message(message.channel_id, message_reply.get("id"), hidetip=True)
+    # Recall command message
     # await api.recall_message(message.channel_id, message.id, hidetip=True)
 
 # 限定消息来源
@@ -74,7 +76,8 @@ def captureException(func):
             message = kwargs["message"]
             api = kwargs["api"]
             log.error(traceback.format_exc())
-            await messageReply(f"机器人运行时遇到未知错误，请向管理反馈以下错误信息：\n{repr(e)} {e}", api, message)
+            err_str = repr(e) if e in repr(e) else f"{repr(e)} {e}"
+            await messageReply(f"机器人运行时遇到未知错误，请向管理反馈以下错误信息：\n{err_str}", api, message)
             return
 
     return wrapper
@@ -93,6 +96,7 @@ def sendEmojiReaction(func):
                 emoji_type=2
             )
             await func(*args, **kwargs)
+            # May reach api rate limit so disabled it
             # await api.delete_reaction(
             #     message_id=message.id,
             #     channel_id=message.channel_id,
@@ -125,6 +129,9 @@ class Parser:
             user_profile = await db.find("User", id = doc["gameUserId"])
         else:
             user_profile = await db.find("User", {"username": username})
+            if user_profile is None:
+                await messageReply("错误：该玩家不存在", api, message, recall_time=5)
+                return
 
         if task_type == 0 and len(user_profile["gamePlay"]["rankAccuracy"]) < 1:
             await messageReply(f"错误：{'该玩家' if username != '' else '你'}没有 Rank 成绩", api, message, recall_time=5)
@@ -147,7 +154,7 @@ class Parser:
 
         cmd = " ".join(args[1:])
         username = cmd[:cmd.rfind("(") - 1]
-        
+
         try:
             get_daystamp = lambda x: int((int(x) + 28800) / 86400)
             time_pair = cmd[cmd.rfind("(") + 1 : cmd.rfind(")")].split(",")
@@ -163,9 +170,9 @@ class Parser:
             await messageReply('错误：无效的时间。参考样例：(60,2023-1-1) (120)\n注意，请确保符号都为英文符号', api, message, recall_time=5)
             traceback.print_exc()
             return
-        
+
         #print(cmd, username)
-        if username + ")" == cmd:   # 未指定用户名
+        if f"{username})" == cmd:   # 未指定用户名
             doc = await db.find("GuildBind", {"guildUserId": message.author.id})
             if doc is None:
                 await messageReply("请先私聊使用 /bind 绑定游戏账号", api, message, recall_time=5)
@@ -173,11 +180,11 @@ class Parser:
             user_profile = await db.find("User", id = doc["gameUserId"])
         else:
             user_profile = await db.find("User", {"username": username})
-    
+
         if user_profile is None:
             await messageReply(f'错误：用户`{username}`不存在', api, message, recall_time=5)
             return
-        
+
         try:
             available_till = min(int(d) for d in user_profile["gameInfo"]["RUpdate"].keys()) + 1
             time_span = min(time_span, end_time-available_till)
