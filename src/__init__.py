@@ -26,11 +26,11 @@ class DatabaseWorker:
         return {"_id": ObjectId(id) if type(id) is str else id} if id != None else {}
 
     async def find(self, set, filter = None, id = None):
-        filter = self.__generate_id_filter__(id) if filter == None else filter
+        filter = self.__generate_id_filter__(id) if filter is None else filter
         return await self.database[set].find_one(filter)
     
     async def delete(self, set, filter = None, id = None):
-        filter = self.__generate_id_filter__(id) if filter == None else filter
+        filter = self.__generate_id_filter__(id) if filter is None else filter
         return await self.database[set].delete_one(filter)
 
     async def insert(self, set, doc = {}, specific_id = False):
@@ -40,7 +40,7 @@ class DatabaseWorker:
         return doc["_id"]
 
     async def update(self, set, doc = {}, filter = None, id = None):
-        filter = self.__generate_id_filter__(id) if filter == None else filter
+        filter = self.__generate_id_filter__(id) if filter is None else filter
         if filter == {}: raise Exception("Invalid database update.")
         await self.database[set].update_one(filter, {"$set": doc})
 

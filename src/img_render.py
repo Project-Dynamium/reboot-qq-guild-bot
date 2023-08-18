@@ -15,7 +15,14 @@ class Render:
                 f.write("")
         self.playwright = await async_playwright().start()
         # self.browser = await self.playwright.chromium.launch(headless=True,args=["--no-sandbox","--remote-debugging-address=0.0.0.0","--remote-debugging-port=9222","--disable-web-security","--allow-file-access-from-files","--allow-file-access"])
-        self.browser = await self.playwright.chromium.launch(headless=True,args=["--no-sandbox","--disable-web-security","--allow-file-access-from-files","--allow-file-access"])
+        self.browser = await self.playwright.chromium.launch(
+            headless = True,
+            args = [
+                "--no-sandbox",
+                "--disable-web-security",
+                "--allow-file-access-from-files",
+                "--allow-file-access"
+        ])
         self.context = await self.browser.new_context(viewport={"width": 700, "height": 1300})
         self.is_inital = True
 

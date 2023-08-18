@@ -9,11 +9,12 @@ from src.parser import Parser, messageReply
 from src.scheduled import scheduled
 
 config = read(os.path.join(os.path.dirname(__file__), "config.yaml"))
-ENABLE_GUILD = config["enabled_guild_id"]
+ENABLED_GUILD = config["enabled_guild_id"]
 log = logging.get_logger()
 
 parser = Parser()
 
+# 监视指令任务用
 ongoing_task = set()
 task_queue = asyncio.Queue()
 task_status = {}
@@ -37,7 +38,7 @@ class MyClient(botpy.Client):
     # 频道
     async def on_at_message_create(self, message: Message):
         print(f"Receive {message.content} from guild {message.author.username}")
-        if message.guild_id not in ENABLE_GUILD:
+        if message.guild_id not in ENABLED_GUILD:
             return
         await command_handler(self, message)
     
@@ -67,6 +68,7 @@ async def command_handler(bot: MyClient, message, timeout = config["task_timeout
 
     task_status[task_id] = 1
 
+
 # 处理因为超时而没有完成的任务
 async def task_supervison(bot: MyClient):
     while True:
@@ -92,7 +94,7 @@ async def bot_info(bot: MyClient):
         log.info(f'| guild_id: {guild.get("id")} guild_name: {guild.get("name")}')
     
     log.info('- Enabled guild info:')
-    for enabled_guild in ENABLE_GUILD:
+    for enabled_guild in ENABLED_GUILD:
         log.info(f'· Guild id: {enabled_guild}')
         for channel in (await bot.api.get_channels(guild_id=enabled_guild)):
             log.info(f'| channel_id: {channel.get("id")} channel_name: {channel.get("name")}')
