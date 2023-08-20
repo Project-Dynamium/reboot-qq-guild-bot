@@ -35,6 +35,46 @@ async def essay_generate(text: str):
     except:
         return "\n"
 
+async def announcement(bot: botpy.Client):
+    async for task in db.database["GuildTask"].find({"taskType": "announce_R"}):
+        info = task["taskDetails"]
+        date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(info["scoreRecord"]["createTime"]))
+
+        r_range = math.floor(info["R"]/1000)
+        in_range_count =  await db.database["User"].count_documents(
+            {"gameInfo.userR": {"$gte": r_range * 1000, "$lt": (r_range + 1) * 1000}}
+        )
+        above_count =  await db.database["User"].count_documents(
+            {"gameInfo.userR": {"$gte": r_range * 1000}}
+        )
+
+        congrate = f"恭喜玩家 {info['username']} 在 {date} 于 {info['setName']} 中获得了单曲 {info['scoreRecord']['R']}R 的成绩，个人 R 值达到了 {info['R']} 点。"
+        essay = await essay_generate(str(r_range * 1000))
+        stat = f"目前，共有 {in_range_count} 名玩家的 R 值在 {r_range * 1000} - {(r_range + 1) * 1000} ，共有 {above_count} 名玩家的 R 值超过了 {r_range * 1000} 。"
+
+        await asyncio.gather(
+            await bot.api.post_message(
+                content=f"{congrate}{essay}{stat}",
+                channel_id=config["announced_channel_id"]
+            ),
+            await db.delete("GuildTask", id = task["_id"])
+        )
+
+async def fill_guild_username(bot: botpy.Client):
+    async for u in db.database["GuildBind"].find():
+        try:
+            user_info = (await bot.api.get_guild_member(
+                guild_id=config["enabled_guild_id"][0],
+                user_id=u["guildUserId"]
+            ))["user"]
+            u["guildUsername"] = user_info['username']
+            u["guildAvatar"] = user_info['avatar']
+            await db.update("GuildBind", u, id = u["_id"])
+        except Exception:
+            traceback.print_exc()
+            log.error(traceback.format_exc())
+            continue
+
 # 周期事件
 async def scheduled(bot: botpy.Client):
     while True:
@@ -42,30 +82,11 @@ async def scheduled(bot: botpy.Client):
             while bot.is_closed():
                 await asyncio.sleep(5)
             
-            async for task in db.database["GuildTask"].find({"taskType": "announce_R"}):
-                info = task["taskDetails"]
-                date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(info["scoreRecord"]["createTime"]))
-    
-                r_range = math.floor(info["R"]/1000)
-                in_range_count =  await db.database["User"].count_documents(
-                    {"gameInfo.userR": {"$gte": r_range * 1000, "$lt": (r_range + 1) * 1000}}
-                )
-                above_count =  await db.database["User"].count_documents(
-                    {"gameInfo.userR": {"$gte": r_range * 1000}}
-                )
-
-                congrate = f"恭喜玩家 {info['username']} 在 {date} 于 {info['setName']} 中获得了单曲 {info['scoreRecord']['R']}R 的成绩，个人 R 值达到了 {info['R']} 点。"
-                essay = await essay_generate(str(r_range * 1000))
-                stat = f"目前，共有 {in_range_count} 名玩家的 R 值在 {r_range * 1000} - {(r_range + 1) * 1000} ，共有 {above_count} 名玩家的 R 值超过了 {r_range * 1000} 。"
-
-                await asyncio.gather(
-                    await bot.api.post_message(
-                        content=f"{congrate}{essay}{stat}",
-                        channel_id=config["announced_channel_id"]
-                    ),
-                    await db.delete("GuildTask", id = task["_id"])
-                )
-
+            asyncio.gather(
+                announcement(bot),
+                fill_guild_username(bot)
+            )
+            
             await asyncio.sleep(30)
         except ServerError:
             await asyncio.sleep(3600)

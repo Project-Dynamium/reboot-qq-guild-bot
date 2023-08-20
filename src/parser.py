@@ -76,7 +76,7 @@ def captureException(func):
             message = kwargs["message"]
             api = kwargs["api"]
             log.error(traceback.format_exc())
-            err_str = repr(e) if e in repr(e) else f"{repr(e)} {e}"
+            err_str = repr(e) if str(e) in repr(e) else f"{repr(e)} {e}"
             await messageReply(f"机器人运行时遇到未知错误，请向管理反馈以下错误信息：\n{err_str}", api, message)
             return
 
@@ -116,7 +116,7 @@ class Parser:
     @ensureUserBind
     @sendEmojiReaction
     async def GenerateBest20Score(uid, api: BotAPI, message: Msg, **kwargs):
-        args = [arg for arg in message.content.strip().split() if arg[:3] != '<@!']
+        args = [arg for arg in message.content.strip().split() if not arg.startswith('<@!')]
         task_type = (args[0] == "/recent")
         username = " ".join(args[1:])
 
@@ -147,7 +147,7 @@ class Parser:
     @captureException
     @sendEmojiReaction
     async def GenerateTimeCurve(api: BotAPI, message: Msg, **kwargs):
-        args = [arg for arg in message.content.strip().split() if arg[:3] != '<@!']
+        args = [arg for arg in message.content.strip().split() if not arg.startswith('<@!')]
         if len(args) < 2:
             await messageReply('错误：参数输入不正确。\n此命令使用方法（省略用户名则查询自己）：\n/curve 用户名 (第n天前,结束日期)', api, message, recall_time=5)
             return
@@ -204,7 +204,7 @@ class Parser:
     @Commands("/calc")
     @captureException
     async def CalculateR(api: BotAPI, message: Msg, **kwargs):
-        args = [arg for arg in message.content.strip().split() if arg[:3] != '<@!']
+        args = [arg for arg in message.content.strip().split() if not arg.startswith('<@!')]
         try:
             assert float(args[-1]) <= 100 and float(args[-1]) >= 0
             calc_R = lambda acc, rValue : max(int(acc * 50), int(acc ** 8 * rValue ** 3 - rValue ** 2.8))
@@ -341,6 +341,25 @@ class Parser:
         return
     
 
+    @Commands("/source")
+    @captureException
+    @ensureUserBind
+    async def IngameDownloadSource(uid, api: BotAPI, message: DirectMessage, **kwargs):
+        args = [arg for arg in message.content.strip().split() if not arg.startswith('<@!')]
+        source = int(args[1])
+
+        if source < 1 or source > 4:
+            await messageReply("错误：无效的参数，请输入 1-4 之间的整数", api, message)
+            return
+
+        doc = await db.find("GuildBind", {"guildUserId": message.author.id})
+        doc["downloadSource"] = source
+        await db.update("GuildBind", doc, id = doc["_id"])
+        await messageReply(f"设置成功，下载路线：{source}", api, message)
+        
+        return
+    
+
     @Commands("/help")
     @captureException
     @messageSource(DirectMessage)
@@ -372,6 +391,7 @@ class Parser:
         await messageReply(help_msg, api, message)
         return
     
+
     @Commands("/dm")
     @captureException
     @messageSource(Message)

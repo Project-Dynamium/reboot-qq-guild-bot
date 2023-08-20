@@ -23,7 +23,7 @@ class DatabaseWorker:
         self.database = mongo_cli[dbname]
 
     def __generate_id_filter__(self, id = None):
-        return {"_id": ObjectId(id) if type(id) is str else id} if id != None else {}
+        return {"_id": ObjectId(id) if type(id) is str else id} if id is not None else {}
 
     async def find(self, set, filter = None, id = None):
         filter = self.__generate_id_filter__(id) if filter is None else filter
